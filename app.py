@@ -52,7 +52,7 @@ def read_from_secrets() -> Dict[str, str]:
     except Exception:
         # No secrets configured; return empty defaults
         empty = {k: "" for k in SF_KEYS}
-        empty.update({"OPENAI_API_KEY": "", "OPENAI_MODEL": "gpt-4o-mini", "AUDIT_DB": "", "AUDIT_SCHEMA": "PUBLIC", "AUDIT_TABLE": "CHAT_DATA_AUDIT"})
+        empty.update({"OPENAI_API_KEY": "", "OPENAI_MODEL": "gpt-4o-mini", "AUDIT_DB": "DATA_LOADS_DB", "AUDIT_SCHEMA": "AUDIT_SCHEMA", "AUDIT_TABLE": "CHAT_DATA_AUDIT"})
         return empty
     
     for k in SF_KEYS:
@@ -69,8 +69,8 @@ def read_from_secrets() -> Dict[str, str]:
         else st.secrets.get("OPENAI_API_KEY", "")
     )
     cfg["OPENAI_MODEL"] = st.secrets.get("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = st.secrets.get("AUDIT_DB", cfg.get("SNOWFLAKE_DATABASE", ""))
-    cfg["AUDIT_SCHEMA"] = st.secrets.get("AUDIT_SCHEMA", "PUBLIC")
+    cfg["AUDIT_DB"] = st.secrets.get("AUDIT_DB", cfg.get("DATA_LOADS_DB", ""))
+    cfg["AUDIT_SCHEMA"] = st.secrets.get("AUDIT_SCHEMA", "AUDIT_SCHEMA")
     cfg["AUDIT_TABLE"] = st.secrets.get("AUDIT_TABLE", "CHAT_DATA_AUDIT")
     return cfg
 
@@ -78,8 +78,8 @@ def read_from_env() -> Dict[str, str]:
     cfg = {k: os.getenv(k, "") for k in SF_KEYS}
     cfg["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "")
     cfg["OPENAI_MODEL"] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = os.getenv("AUDIT_DB", cfg.get("SNOWFLAKE_DATABASE", ""))
-    cfg["AUDIT_SCHEMA"] = os.getenv("AUDIT_SCHEMA", "PUBLIC")
+    cfg["AUDIT_DB"] = os.getenv("AUDIT_DB", cfg.get("DATA_LOADS_DB", ""))
+    cfg["AUDIT_SCHEMA"] = os.getenv("AUDIT_SCHEMA", "AUDIT_SCHEMA")
     cfg["AUDIT_TABLE"] = os.getenv("AUDIT_TABLE", "CHAT_DATA_AUDIT")
     return cfg
 
