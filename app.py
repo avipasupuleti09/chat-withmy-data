@@ -69,7 +69,7 @@ def read_from_secrets() -> Dict[str, str]:
         else st.secrets.get("OPENAI_API_KEY", "")
     )
     cfg["OPENAI_MODEL"] = st.secrets.get("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = st.secrets.get("AUDIT_DB", cfg.get("DATA_LOADS_DB", ""))
+    cfg["AUDIT_DB"] = st.secrets.get("AUDIT_DB", "DATA_LOADS_DB")
     cfg["AUDIT_SCHEMA"] = st.secrets.get("AUDIT_SCHEMA", "AUDIT_SCHEMA")
     cfg["AUDIT_TABLE"] = st.secrets.get("AUDIT_TABLE", "CHAT_DATA_AUDIT")
     return cfg
@@ -78,7 +78,7 @@ def read_from_env() -> Dict[str, str]:
     cfg = {k: os.getenv(k, "") for k in SF_KEYS}
     cfg["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "")
     cfg["OPENAI_MODEL"] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = os.getenv("AUDIT_DB", cfg.get("DATA_LOADS_DB", ""))
+    cfg["AUDIT_DB"] = os.getenv("AUDIT_DB","DATA_LOADS_DB")
     cfg["AUDIT_SCHEMA"] = os.getenv("AUDIT_SCHEMA", "AUDIT_SCHEMA")
     cfg["AUDIT_TABLE"] = os.getenv("AUDIT_TABLE", "CHAT_DATA_AUDIT")
     return cfg
@@ -141,7 +141,7 @@ with st.sidebar:
     hard_limit = st.number_input("Hard LIMIT injected into SQL (to protect UI)", min_value=100, max_value=100000, value=5000, step=100)
     timeout_s = st.number_input("Statement timeout (seconds)", min_value=5, max_value=600, value=60, step=5)
     enable_audit = st.toggle("Write audit logs (PROMPT/SQL/ROWCOUNT)", value=False, help="Writes to the configured AUDIT_DB.AUDIT_SCHEMA.AUDIT_TABLE")
-    audit_db = st.text_input("AUDIT_DB", value=base_cfg.get("AUDIT_DB", base_cfg.get("SNOWFLAKE_DATABASE") or "DATA_LOADS_DB"))
+    audit_db = st.text_input("AUDIT_DB", value=base_cfg.get("AUDIT_DB") or "DATA_LOADS_DB")
     audit_schema = st.text_input("AUDIT_SCHEMA", value=base_cfg.get("AUDIT_SCHEMA") or "AUDIT_SCHEMA")
     audit_table = st.text_input("AUDIT_TABLE", value=base_cfg.get("AUDIT_TABLE") or "CHAT_DATA_AUDIT")
     audit_debug = st.toggle("Show audit errors", value=True)
