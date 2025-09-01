@@ -1,7 +1,3 @@
-# NL2SQL-Viz: Natural language → Snowflake SQL → Smart visuals + insights
-# Streamlit app for Snowflake TPCH_SF1000 (or your own schema)
-# ---------------------------------------------------------------
-
 import os
 import re
 import time
