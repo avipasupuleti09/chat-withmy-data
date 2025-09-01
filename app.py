@@ -28,9 +28,9 @@ import snowflake.connector
 # ---------------------------
 # Page config
 # ---------------------------
-st.set_page_config(page_title="Chat with my Data", layout="wide")
-st.title("Chat with my Data")
-st.caption("Ask a question; I’ll generate safe SQL for Snowflake, run it, pick suitable visuals, and suggest insights.")
+st.set_page_config(page_title="AnswerLens ", layout="wide")
+st.title("AnswerLens :mag_right:")
+st.caption("Ask a question; I’ll generate safe SQL for Snowflake, run it, pick suitable visuals, and suggest insights. Focus on what matters in your data.")
 
 # ---------------------------
 # Helpers to get configuration from: Streamlit secrets, Env/.env, or manual input
