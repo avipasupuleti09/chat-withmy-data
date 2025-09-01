@@ -125,12 +125,12 @@ with st.sidebar:
     # manual inputs
     if source == "Manual input":
         st.markdown("**Snowflake**")
-        base_cfg["SNOWFLAKE_ACCOUNT"] = st.text_input("SNOWFLAKE_ACCOUNT", value=base_cfg.get("SNOWFLAKE_ACCOUNT", ""))
-        base_cfg["SNOWFLAKE_USER"] = st.text_input("SNOWFLAKE_USER", value=base_cfg.get("SNOWFLAKE_USER", ""))
+        base_cfg["SNOWFLAKE_ACCOUNT"] = st.text_input("SNOWFLAKE_ACCOUNT", value=base_cfg.get("SNOWFLAKE_ACCOUNT", "KHIGKSW-TF63553"))
+        base_cfg["SNOWFLAKE_USER"] = st.text_input("SNOWFLAKE_USER", value=base_cfg.get("SNOWFLAKE_USER", "SNFLUSER2025"))
         base_cfg["SNOWFLAKE_PASSWORD"] = st.text_input("SNOWFLAKE_PASSWORD", type="password", value=base_cfg.get("SNOWFLAKE_PASSWORD", ""))
-        base_cfg["SNOWFLAKE_WAREHOUSE"] = st.text_input("SNOWFLAKE_WAREHOUSE", value=base_cfg.get("SNOWFLAKE_WAREHOUSE", ""))
+        base_cfg["SNOWFLAKE_WAREHOUSE"] = st.text_input("SNOWFLAKE_WAREHOUSE", value=base_cfg.get("SNOWFLAKE_WAREHOUSE", "ETL_RUN_WH"))
         base_cfg["SNOWFLAKE_DATABASE"] = st.text_input("SNOWFLAKE_DATABASE", value=base_cfg.get("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA"))
-        base_cfg["SNOWFLAKE_SCHEMA"] = st.text_input("SNOWFLAKE_SCHEMA", value=base_cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF1000"))
+        base_cfg["SNOWFLAKE_SCHEMA"] = st.text_input("SNOWFLAKE_SCHEMA", value=base_cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF100"))
         st.markdown("**OpenAI (optional)**")
         base_cfg["OPENAI_API_KEY"] = st.text_input("OPENAI_API_KEY (optional)", type="password", value=base_cfg.get("OPENAI_API_KEY", ""))
         base_cfg["OPENAI_MODEL"] = st.text_input("OPENAI_MODEL", value=base_cfg.get("OPENAI_MODEL", "gpt-4o-mini"))
