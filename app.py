@@ -32,8 +32,8 @@ import snowflake.connector
 # ---------------------------
 # Page config
 # ---------------------------
-st.set_page_config(page_title="NL2SQL-Viz (Snowflake)", layout="wide")
-st.title("Natural Language → SQL Visualizer")
+st.set_page_config(page_title="Chat with my Data", layout="wide")
+st.title("Chat with my Data")
 st.caption("Ask a question; I’ll generate safe SQL for Snowflake, run it, pick suitable visuals, and suggest insights.")
 
 # ---------------------------
