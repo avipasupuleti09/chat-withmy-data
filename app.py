@@ -125,12 +125,12 @@ with st.sidebar:
     # manual inputs
     if source == "Manual input":
         st.markdown("**Snowflake**")
-        base_cfg["SNOWFLAKE_ACCOUNT"] = st.text_input("SNOWFLAKE_ACCOUNT", value=base_cfg.get("SNOWFLAKE_ACCOUNT", "KHIGKSW-TF63553"))
-        base_cfg["SNOWFLAKE_USER"] = st.text_input("SNOWFLAKE_USER", value=base_cfg.get("SNOWFLAKE_USER", "SNFLUSER2025"))
+        base_cfg["SNOWFLAKE_ACCOUNT"] = st.text_input("SNOWFLAKE_ACCOUNT", value=base_cfg.get("SNOWFLAKE_ACCOUNT") or "KHIGKSW-TF63553")
+        base_cfg["SNOWFLAKE_USER"] = st.text_input("SNOWFLAKE_USER", value=base_cfg.get("SNOWFLAKE_USER") or "SNFLUSER2025")
         base_cfg["SNOWFLAKE_PASSWORD"] = st.text_input("SNOWFLAKE_PASSWORD", type="password", value=base_cfg.get("SNOWFLAKE_PASSWORD", ""))
-        base_cfg["SNOWFLAKE_WAREHOUSE"] = st.text_input("SNOWFLAKE_WAREHOUSE", value=base_cfg.get("SNOWFLAKE_WAREHOUSE", "ETL_RUN_WH"))
-        base_cfg["SNOWFLAKE_DATABASE"] = st.text_input("SNOWFLAKE_DATABASE", value=base_cfg.get("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA"))
-        base_cfg["SNOWFLAKE_SCHEMA"] = st.text_input("SNOWFLAKE_SCHEMA", value=base_cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF100"))
+        base_cfg["SNOWFLAKE_WAREHOUSE"] = st.text_input("SNOWFLAKE_WAREHOUSE", value=base_cfg.get("SNOWFLAKE_WAREHOUSE") or "ETL_RUN_WH")
+        base_cfg["SNOWFLAKE_DATABASE"] = st.text_input("SNOWFLAKE_DATABASE", value=base_cfg.get("SNOWFLAKE_DATABASE") or "SNOWFLAKE_SAMPLE_DATA")
+        base_cfg["SNOWFLAKE_SCHEMA"] = st.text_input("SNOWFLAKE_SCHEMA", value=base_cfg.get("SNOWFLAKE_SCHEMA") or "TPCH_SF100")
         st.markdown("**OpenAI (optional)**")
         base_cfg["OPENAI_API_KEY"] = st.text_input("OPENAI_API_KEY (optional)", type="password", value=base_cfg.get("OPENAI_API_KEY", ""))
         base_cfg["OPENAI_MODEL"] = st.text_input("OPENAI_MODEL", value=base_cfg.get("OPENAI_MODEL", "gpt-4o-mini"))
@@ -141,9 +141,9 @@ with st.sidebar:
     hard_limit = st.number_input("Hard LIMIT injected into SQL (to protect UI)", min_value=100, max_value=100000, value=5000, step=100)
     timeout_s = st.number_input("Statement timeout (seconds)", min_value=5, max_value=600, value=60, step=5)
     enable_audit = st.toggle("Write audit logs (PROMPT/SQL/ROWCOUNT)", value=False, help="Writes to the configured AUDIT_DB.AUDIT_SCHEMA.AUDIT_TABLE")
-    audit_db = st.text_input("AUDIT_DB", value=base_cfg.get("AUDIT_DB", base_cfg.get("SNOWFLAKE_DATABASE", "")))
-    audit_schema = st.text_input("AUDIT_SCHEMA", value=base_cfg.get("AUDIT_SCHEMA", "PUBLIC"))
-    audit_table = st.text_input("AUDIT_TABLE", value=base_cfg.get("AUDIT_TABLE", "CHAT_DATA_AUDIT"))
+    audit_db = st.text_input("AUDIT_DB", value=base_cfg.get("AUDIT_DB", base_cfg.get("SNOWFLAKE_DATABASE") or "DATA_LOADS_DB"))
+    audit_schema = st.text_input("AUDIT_SCHEMA", value=base_cfg.get("AUDIT_SCHEMA") or "AUDIT_SCHEMA")
+    audit_table = st.text_input("AUDIT_TABLE", value=base_cfg.get("AUDIT_TABLE") or "CHAT_DATA_AUDIT")
     audit_debug = st.toggle("Show audit errors", value=True)
 
 # ---------------------------
