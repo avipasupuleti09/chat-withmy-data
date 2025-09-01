@@ -2,13 +2,13 @@ import os
 import re
 import time
 from datetime import datetime
-from typing import Dict, Tuple, List
+from typing import List, Tuple
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# Load .env if present (local dev)
+# Load .env if present
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -33,107 +33,30 @@ st.title("Chat with my Data")
 st.caption("Ask a question; I’ll generate safe SQL for Snowflake, run it, pick suitable visuals, and suggest insights.")
 
 # ---------------------------
-# Helpers to get configuration from: Streamlit secrets, Env/.env, or manual input
-# ---------------------------
-SF_KEYS = [
-    "SNOWFLAKE_ACCOUNT",
-    "SNOWFLAKE_USER",
-    "SNOWFLAKE_PASSWORD",
-    "SNOWFLAKE_WAREHOUSE",
-    "SNOWFLAKE_DATABASE",
-    "SNOWFLAKE_SCHEMA",
-]
-
-def read_from_secrets() -> Dict[str, str]:
-    cfg = {}
-    try:
-        # Support both nested [snowflake] and top-level keys
-        sf = st.secrets.get("snowflake", {})
-    except Exception:
-        # No secrets configured; return empty defaults
-        empty = {k: "" for k in SF_KEYS}
-        empty.update({"OPENAI_API_KEY": "", "OPENAI_MODEL": "gpt-4o-mini", "AUDIT_DB": "", "AUDIT_SCHEMA": "PUBLIC", "AUDIT_TABLE": "CHAT_DATA_AUDIT"})
-        return empty
-    
-    for k in SF_KEYS:
-        cfg[k] = (
-            sf.get(k)
-            if isinstance(sf, dict) and sf.get(k) is not None
-            else st.secrets.get(k, "")
-        )
-    # Optional sections
-    openai_section = st.secrets.get("openai", {})
-    cfg["OPENAI_API_KEY"] = (
-        openai_section.get("api_key")
-        if isinstance(openai_section, dict) and openai_section.get("api_key") is not None
-        else st.secrets.get("OPENAI_API_KEY", "")
-    )
-    cfg["OPENAI_MODEL"] = st.secrets.get("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = st.secrets.get("AUDIT_DB", cfg.get("SNOWFLAKE_DATABASE", ""))
-    cfg["AUDIT_SCHEMA"] = st.secrets.get("AUDIT_SCHEMA", "PUBLIC")
-    cfg["AUDIT_TABLE"] = st.secrets.get("AUDIT_TABLE", "CHAT_DATA_AUDIT")
-    return cfg
-
-def read_from_env() -> Dict[str, str]:
-    cfg = {k: os.getenv(k, "") for k in SF_KEYS}
-    cfg["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "")
-    cfg["OPENAI_MODEL"] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    cfg["AUDIT_DB"] = os.getenv("AUDIT_DB", cfg.get("SNOWFLAKE_DATABASE", ""))
-    cfg["AUDIT_SCHEMA"] = os.getenv("AUDIT_SCHEMA", "PUBLIC")
-    cfg["AUDIT_TABLE"] = os.getenv("AUDIT_TABLE", "CHAT_DATA_AUDIT")
-    return cfg
-
-def sf_connect(cfg: Dict[str, str]):
-    return snowflake.connector.connect(
-        account=cfg.get("SNOWFLAKE_ACCOUNT", ""),
-        user=cfg.get("SNOWFLAKE_USER", ""),
-        password=cfg.get("SNOWFLAKE_PASSWORD", ""),
-        warehouse=cfg.get("SNOWFLAKE_WAREHOUSE", ""),
-        database=cfg.get("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA"),
-        schema=cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF1000"),
-        client_session_keep_alive=True,
-        application="NL2SQLViz",
-    )
-
-# ---------------------------
 # Sidebar: connections & settings
 # ---------------------------
 with st.sidebar:
     st.header("🔐 Connections")
-    # Autodetect preferred default
-    # Safe check for secrets without calling bool(len(st.secrets)), which raises when missing.
-    try:
-        # Try reading a bogus key. If secrets file exists, this raises KeyError (which means secrets ARE present).
-        _ = st.secrets["__probe__"]
-        secrets_present = True
-    except KeyError:
-        secrets_present = True  # secrets file exists but key missing -> OK
-    except Exception:
-        secrets_present = False
-    
-    default_source_ix = 0 if secrets_present else 1
-    source = st.radio(
-        "Credential source",
-        ["Streamlit secrets", ".env / OS env", "Manual input"],
-        index=default_source_ix,
-        help="On Streamlit Cloud, add credentials in Settings → Secrets.",
-    )
+    use_env = st.toggle("Use environment variables (.env / OS env)", value=True)
 
-    # seed defaults
-    base_cfg = read_from_secrets() if source == "Streamlit secrets" else read_from_env()
-
-    # manual inputs
-    if source == "Manual input":
-        st.markdown("**Snowflake**")
-        base_cfg["SNOWFLAKE_ACCOUNT"] = st.text_input("SNOWFLAKE_ACCOUNT", value=base_cfg.get("SNOWFLAKE_ACCOUNT", ""))
-        base_cfg["SNOWFLAKE_USER"] = st.text_input("SNOWFLAKE_USER", value=base_cfg.get("SNOWFLAKE_USER", ""))
-        base_cfg["SNOWFLAKE_PASSWORD"] = st.text_input("SNOWFLAKE_PASSWORD", type="password", value=base_cfg.get("SNOWFLAKE_PASSWORD", ""))
-        base_cfg["SNOWFLAKE_WAREHOUSE"] = st.text_input("SNOWFLAKE_WAREHOUSE", value=base_cfg.get("SNOWFLAKE_WAREHOUSE", ""))
-        base_cfg["SNOWFLAKE_DATABASE"] = st.text_input("SNOWFLAKE_DATABASE", value=base_cfg.get("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA"))
-        base_cfg["SNOWFLAKE_SCHEMA"] = st.text_input("SNOWFLAKE_SCHEMA", value=base_cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF1000"))
-        st.markdown("**OpenAI (optional)**")
-        base_cfg["OPENAI_API_KEY"] = st.text_input("OPENAI_API_KEY (optional)", type="password", value=base_cfg.get("OPENAI_API_KEY", ""))
-        base_cfg["OPENAI_MODEL"] = st.text_input("OPENAI_MODEL", value=base_cfg.get("OPENAI_MODEL", "gpt-4o-mini"))
+    if use_env:
+        SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT", "")
+        SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER", "")
+        SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD", "")
+        SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE", "")
+        SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA")
+        SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA", "TPCH_SF1000")
+        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+        OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    else:
+        SNOWFLAKE_ACCOUNT = st.text_input("SNOWFLAKE_ACCOUNT")
+        SNOWFLAKE_USER = st.text_input("SNOWFLAKE_USER")
+        SNOWFLAKE_PASSWORD = st.text_input("SNOWFLAKE_PASSWORD", type="password")
+        SNOWFLAKE_WAREHOUSE = st.text_input("SNOWFLAKE_WAREHOUSE")
+        SNOWFLAKE_DATABASE = st.text_input("SNOWFLAKE_DATABASE", value="SNOWFLAKE_SAMPLE_DATA")
+        SNOWFLAKE_SCHEMA = st.text_input("SNOWFLAKE_SCHEMA", value="TPCH_SF1000")
+        OPENAI_API_KEY = st.text_input("OPENAI_API_KEY (optional)", type="password")
+        OPENAI_MODEL = st.text_input("OPENAI_MODEL", value="gpt-4o-mini")
 
     st.divider()
     st.header("⚙️ Settings")
@@ -141,9 +64,9 @@ with st.sidebar:
     hard_limit = st.number_input("Hard LIMIT injected into SQL (to protect UI)", min_value=100, max_value=100000, value=5000, step=100)
     timeout_s = st.number_input("Statement timeout (seconds)", min_value=5, max_value=600, value=60, step=5)
     enable_audit = st.toggle("Write audit logs (PROMPT/SQL/ROWCOUNT)", value=False, help="Writes to the configured AUDIT_DB.AUDIT_SCHEMA.AUDIT_TABLE")
-    audit_db = st.text_input("AUDIT_DB", value=base_cfg.get("AUDIT_DB", base_cfg.get("SNOWFLAKE_DATABASE", "")))
-    audit_schema = st.text_input("AUDIT_SCHEMA", value=base_cfg.get("AUDIT_SCHEMA", "PUBLIC"))
-    audit_table = st.text_input("AUDIT_TABLE", value=base_cfg.get("AUDIT_TABLE", "CHAT_DATA_AUDIT"))
+    audit_db = st.text_input("AUDIT_DB", value=os.getenv("AUDIT_DB", os.getenv("SNOWFLAKE_DATABASE", "")))
+    audit_schema = st.text_input("AUDIT_SCHEMA", value=os.getenv("AUDIT_SCHEMA", "PUBLIC"))
+    audit_table = st.text_input("AUDIT_TABLE", value=os.getenv("AUDIT_TABLE", "CHAT_DATA_AUDIT"))
     audit_debug = st.toggle("Show audit errors", value=True)
 
 # ---------------------------
@@ -171,7 +94,7 @@ def schema_block(database: str, schema: str) -> str:
 # ---------------------------
 # NL → SQL
 # ---------------------------
-SQL_SYSTEM_PROMPT = '''
+SQL_SYSTEM_PROMPT = """
 You are a senior Snowflake SQL generator. Convert the user's question into a **single** safe SQL SELECT statement for Snowflake.
 STRICT RULES:
 - Only read from the whitelisted schema and tables the user provides.
@@ -182,20 +105,21 @@ STRICT RULES:
 - Never use DDL/DML (CREATE/UPDATE/DELETE/INSERT/MERGE/COPY) or CALL.
 - Always end with a LIMIT if not provided, using the limit hint supplied.
 - If the question is ambiguous, choose a reasonable default and continue.
-'''.strip()
+""".strip()
 
-def call_llm_for_sql(user_question: str, database: str, schema: str, limit_hint: int, openai_api_key: str, openai_model: str) -> str:
+def call_llm_for_sql(user_question: str, database: str, schema: str, limit_hint: int) -> str:
     whitelist = schema_block(database, schema)
-    user_prompt = f'''
+    user_prompt = f"""
 {whitelist}
 Generate a single Snowflake SQL (no comments) answering:
 "{user_question.strip()}"
 Ensure the query ends with "LIMIT {limit_hint}" if not already.
-'''.strip()
+""".strip()
 
-    if OPENAI_AVAILABLE and openai_api_key:
-        client = OpenAI(api_key=openai_api_key)
-        model = openai_model or "gpt-4o-mini"
+    if OPENAI_AVAILABLE and (os.getenv("OPENAI_API_KEY") or 'OPENAI_API_KEY' in globals()):
+        api_key = os.getenv("OPENAI_API_KEY") or globals().get("OPENAI_API_KEY", "")
+        client = OpenAI(api_key=api_key)
+        model = os.getenv("OPENAI_MODEL") or globals().get("OPENAI_MODEL", "gpt-4o-mini")
         completion = client.chat.completions.create(
             model=model,
             messages=[
@@ -209,7 +133,7 @@ Ensure the query ends with "LIMIT {limit_hint}" if not already.
         # Simple heuristic fallback
         uq = user_question.lower()
         if "revenue" in uq or "sales" in uq:
-            sql = f'''
+            sql = f"""
 SELECT c.C_MKTSEGMENT AS SEGMENT,
        SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS REVENUE
 FROM {database}.{schema}.CUSTOMER c
@@ -218,9 +142,9 @@ JOIN {database}.{schema}.LINEITEM l ON l.L_ORDERKEY = o.O_ORDERKEY
 GROUP BY 1
 ORDER BY 2 DESC
 LIMIT {limit_hint}
-'''.strip()
+""".strip()
         elif "top" in uq and "customers" in uq:
-            sql = f'''
+            sql = f"""
 SELECT c.C_NAME AS CUSTOMER,
        SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS REVENUE
 FROM {database}.{schema}.CUSTOMER c
@@ -229,9 +153,9 @@ JOIN {database}.{schema}.LINEITEM l ON l.L_ORDERKEY = o.O_ORDERKEY
 GROUP BY 1
 ORDER BY 2 DESC
 LIMIT {limit_hint}
-'''.strip()
+""".strip()
         elif "monthly" in uq and ("revenue" in uq or "sales" in uq):
-            sql = f'''
+            sql = f"""
 SELECT DATE_TRUNC('month', o.O_ORDERDATE) AS MONTH,
        SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS REVENUE
 FROM {database}.{schema}.ORDERS o
@@ -239,7 +163,7 @@ JOIN {database}.{schema}.LINEITEM l ON l.L_ORDERKEY = o.O_ORDERKEY
 GROUP BY 1
 ORDER BY 1
 LIMIT {limit_hint}
-'''.strip()
+""".strip()
         else:
             sql = f"SELECT * FROM {database}.{schema}.CUSTOMER LIMIT {limit_hint}"
 
@@ -259,8 +183,20 @@ LIMIT {limit_hint}
 # ---------------------------
 # Snowflake helpers
 # ---------------------------
-def run_query_df(cfg: Dict[str, str], sql: str, timeout_seconds: int, max_rows: int) -> pd.DataFrame:
-    ctx = sf_connect(cfg)
+def sf_connect():
+    return snowflake.connector.connect(
+        account=os.getenv("SNOWFLAKE_ACCOUNT") or "",
+        user=os.getenv("SNOWFLAKE_USER") or "",
+        password=os.getenv("SNOWFLAKE_PASSWORD") or "",
+        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE") or "",
+        database=os.getenv("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA"),
+        schema=os.getenv("SNOWFLAKE_SCHEMA", "TPCH_SF1000"),
+        client_session_keep_alive=True,
+        application="NL2SQLViz",
+    )
+
+def run_query_df(sql: str, timeout_seconds: int, max_rows: int) -> pd.DataFrame:
+    ctx = sf_connect()
     try:
         cs = ctx.cursor()
         try:
@@ -274,16 +210,21 @@ def run_query_df(cfg: Dict[str, str], sql: str, timeout_seconds: int, max_rows: 
     finally:
         ctx.close()
 
-def try_audit_log(cfg: Dict[str, str], enabled: bool, prompt: str, sql: str, rowcount: int, qname: str, show_errors: bool):
+def try_audit_log(enabled: bool, prompt: str, sql: str, rowcount: int,
+                  audit_db: str, audit_schema: str, audit_table: str, show_errors: bool):
+    """Create audit table if missing and insert a log row using named bindings.
+       Uses Snowflake server-side CURRENT_TIMESTAMP() for TS."""
     if not enabled:
         return
+    qname = f"{audit_db}.{audit_schema}.{audit_table}"
     try:
-        ctx = sf_connect(cfg)
+        ctx = sf_connect()
         cur = ctx.cursor()
         try:
             cur.execute(f"CREATE TABLE IF NOT EXISTS {qname} (TS TIMESTAMP_NTZ, PROMPT STRING, SQL_TEXT STRING, ROWCOUNT INTEGER)")
             cur.execute(
-                f"INSERT INTO {qname} (TS, PROMPT, SQL_TEXT, ROWCOUNT) VALUES (CURRENT_TIMESTAMP(), %(prompt)s, %(sql)s, %(rc)s)",
+                f"INSERT INTO {qname} (TS, PROMPT, SQL_TEXT, ROWCOUNT) "
+                f"VALUES (CURRENT_TIMESTAMP(), %(prompt)s, %(sql)s, %(rc)s)",
                 {"prompt": prompt, "sql": sql, "rc": int(rowcount)},
             )
             try:
@@ -295,9 +236,10 @@ def try_audit_log(cfg: Dict[str, str], enabled: bool, prompt: str, sql: str, row
     except Exception as e:
         if show_errors:
             st.warning(f"Audit log failed for {qname}: {e}")
+        return
 
 # ---------------------------
-# Smart viz & insights (same as before)
+# Smart viz & insights
 # ---------------------------
 NUMERIC_HINTS = ("revenue","amount","price","total","sum","avg","average","count","qty","quantity","score","rate","value","metric")
 
@@ -484,28 +426,27 @@ with col2:
 advanced = st.expander("Advanced: generated SQL & raw data")
 
 if st.button("🚀 Run", type="primary"):
-    # Active configuration after sidebar choices
-    cfg = base_cfg.copy()
-
-    # Validate
-    missing = [k for k in SF_KEYS if not cfg.get(k)]
-    if missing:
-        st.error("Please provide Snowflake connection details (missing: " + ", ".join(missing) + ").")
+    required = [
+        os.getenv("SNOWFLAKE_ACCOUNT"),
+        os.getenv("SNOWFLAKE_USER"),
+        os.getenv("SNOWFLAKE_PASSWORD"),
+        os.getenv("SNOWFLAKE_WAREHOUSE"),
+        os.getenv("SNOWFLAKE_DATABASE"),
+        os.getenv("SNOWFLAKE_SCHEMA"),
+    ]
+    if not all(required):
+        st.error("Please provide Snowflake connection details in the sidebar or .env.")
         st.stop()
 
     if not (question and question.strip()):
         st.warning("Please enter a question.")
         st.stop()
 
-    # Fetch optional OpenAI config
-    openai_api_key = cfg.get("OPENAI_API_KEY", "")
-    openai_model = cfg.get("OPENAI_MODEL", "gpt-4o-mini")
-
     with st.spinner("Generating SQL from your question…"):
         try:
-            database = cfg.get("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA")
-            schema = cfg.get("SNOWFLAKE_SCHEMA", "TPCH_SF1000")
-            sql = call_llm_for_sql(question, database, schema, int(hard_limit), openai_api_key, openai_model)
+            database = os.getenv("SNOWFLAKE_DATABASE", "SNOWFLAKE_SAMPLE_DATA")
+            schema = os.getenv("SNOWFLAKE_SCHEMA", "TPCH_SF1000")
+            sql = call_llm_for_sql(question, database, schema, int(hard_limit))
         except Exception as e:
             st.error(f"Failed to generate SQL: {e}")
             st.stop()
@@ -522,7 +463,7 @@ if st.button("🚀 Run", type="primary"):
     with st.spinner("Running on Snowflake…"):
         t0 = time.time()
         try:
-            df = run_query_df(cfg, sql, timeout_s, max_rows)
+            df = run_query_df(sql, timeout_s, max_rows)
         except Exception as e:
             st.error(f"Query failed: {e}")
             st.stop()
@@ -539,8 +480,7 @@ if st.button("🚀 Run", type="primary"):
         st.write(f"- {bullet}")
 
     # Audit (after success)
-    qname = f"{audit_db}.{audit_schema}.{audit_table}"
-    try_audit_log(cfg, enable_audit, question, sql, len(df), qname, audit_debug)
+    try_audit_log(enable_audit, question, sql, len(df), audit_db, audit_schema, audit_table, audit_debug)
 
     # Raw
     with advanced:
